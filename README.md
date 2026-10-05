@@ -38,8 +38,8 @@ Built in steps, with a review after each one.
 | 7 | Chunking (worker model → analyst model) | ✅ |
 | 8 | Local reference database (SQLite) | ✅ |
 | 9 | Passive network map protocol | ✅ |
-| 10 | Health checks | ⏳ |
-| 11 | Update section (reference data downloads) | |
+| 10 | Health checks | ✅ |
+| 11 | Update section (reference data downloads) | ⏳ |
 | 12 | Prompt-injection test suite | |
 | 13 | Full-screen dashboard (Textual) | |
 | 14 | Tuning against your real Ollama | |
@@ -54,6 +54,7 @@ pytest                             # runs all tests; no Ollama needed
 aicore version
 aicore list                        # protocols found in protocols/
 aicore models                      # installed models + which one plays each role
+aicore health                      # is everything ready? (green / amber / red)
 aicore dry-run <protocol> --file x # show exactly what would be sent; sends nothing
 aicore run <protocol> --file x     # run it; report saved to reports/<protocol>/
 ```

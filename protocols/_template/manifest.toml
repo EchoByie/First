@@ -35,8 +35,14 @@ kind = "none"                   # none | file_or_text
 # The ONLY things the collector is allowed to touch. Commands are lists of
 # words (never one string) so they can't be run through a shell.
 [collector_policy]
-commands = []                   # e.g. [["arp", "-a"]]
-files = []                      # e.g. ["/proc/net/arp"]
+commands = []                   # e.g. [["arp", "-a"]]   (all platforms)
+files = []                      # e.g. ["/etc/hostname"]  (all platforms)
+
+# Optional: entries that apply on ONE platform only.
+# [collector_policy.linux]
+# files = ["/proc/net/arp"]
+# [collector_policy.windows]
+# commands = [["arp", "-a"]]
 
 # Optional: reference data this protocol needs (checked by `aicore health`).
 [requires]

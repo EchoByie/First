@@ -230,3 +230,14 @@ def test_allow_list_has_no_active_tools():
     assert commands <= {"arp", "route"}
     assert not commands & {"ping", "nmap", "arping", "nbtstat", "nslookup", "curl"}
     assert MANIFEST.input_kind == "none" and MANIFEST.risk_level == "low"
+
+
+def test_allow_lists_are_per_platform():
+    from core.collecting import CollectorError
+    from core.safe_exec import CommandNotAllowed
+    assert MANIFEST.policy_for("linux") == ([], ["/proc/net/arp", "/proc/net/route"])
+    assert MANIFEST.policy_for("windows") == ([["arp", "-a"], ["route", "print", "-4"]], [])
+    with pytest.raises(CollectorError):                       # Windows may not read /proc
+        CollectorContext(MANIFEST, "windows").read_file("/proc/net/arp")
+    with pytest.raises(CommandNotAllowed):                    # Linux may not run arp
+        CollectorContext(MANIFEST, "linux").run(["arp", "-a"])

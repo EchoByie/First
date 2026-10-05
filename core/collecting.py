@@ -120,8 +120,8 @@ class CollectorContext:
         raise CollectorError("this protocol needs a file or text as input")
 
     def read_file(self, path: str) -> str:
-        if path not in self.manifest.allowed_files:
-            raise CollectorError(f"{path} is not in this protocol's allowed files")
+        if path not in self.manifest.policy_for(self.platform)[1]:
+            raise CollectorError(f"{path} is not in this protocol's allowed files on {self.platform}")
         try:
             return _read_capped(Path(path))
         except OSError as e:
@@ -139,7 +139,7 @@ class CollectorContext:
 
     def run(self, argv: list[str], timeout: float | None = None) -> str:
         timeout = timeout or min(30, self.manifest.limits["timeout_seconds"])
-        return run_allowed(argv, self.manifest.allowed_commands, timeout=timeout)
+        return run_allowed(argv, self.manifest.policy_for(self.platform)[0], timeout=timeout)
 
 
 def load_function(path: Path, function_name: str):

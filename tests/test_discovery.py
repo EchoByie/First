@@ -144,3 +144,19 @@ def test_cli_list_does_not_interpret_markup(tmp_path, capsys):
     make_protocol(tmp_path, "sneaky", text)
     main(["list", "--protocols-dir", str(tmp_path)])
     assert "[red]x[/red]" in capsys.readouterr().out
+
+
+def test_platform_policy_tables(tmp_path):
+    text = minimal("plat") + (
+        '[collector_policy]\nfiles = ["/etc/hostname"]\n'
+        '[collector_policy.linux]\nfiles = ["/proc/x"]\n'
+        '[collector_policy.windows]\ncommands = [["ver"]]\n')
+    m = load_manifest(make_protocol(tmp_path, "plat", text))
+    assert m.policy_for("linux") == ([], ["/etc/hostname", "/proc/x"])
+    assert m.policy_for("windows") == ([["ver"]], ["/etc/hostname"])
+
+
+def test_unknown_policy_platform_rejected(tmp_path):
+    text = minimal("plat") + '[collector_policy.macos]\nfiles = ["/x"]\n'
+    with pytest.raises(ManifestError, match="unknown keys"):
+        load_manifest(make_protocol(tmp_path, "plat", text))

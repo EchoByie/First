@@ -30,7 +30,7 @@ class FakeBackend(ModelBackend):
 
     def version(self):
         self._check()
-        return "fake-1.0"
+        return "0.9.0"   # looks like a recent Ollama
 
     def list_models(self):
         self._check()

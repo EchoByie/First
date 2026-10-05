@@ -81,15 +81,25 @@ class Manifest:
     limits: dict[str, int]
     input_kind: str
     files: dict[str, Path]  # only the files that actually exist
-    allowed_commands: list[list[str]] = field(default_factory=list)
-    allowed_files: list[str] = field(default_factory=list)
+    allowed_commands: list[list[str]] = field(default_factory=list)  # every platform combined
+    allowed_files: list[str] = field(default_factory=list)            # (for display/checks)
     required_refdata: list[str] = field(default_factory=list)
     max_refdata_age_days: int | None = None
     caveats: list[str] = field(default_factory=list)  # always added to reports
     finding_kinds: list[str] = field(default_factory=list)  # if set, every finding needs one
 
+    _policy: dict = field(default_factory=dict, repr=False)
+
     def supports(self, platform: str) -> bool:
         return platform in self.platforms
+
+    def policy_for(self, platform: str) -> tuple[list[list[str]], list[str]]:
+        """(commands, files) allowed on ONE platform: shared + that platform's own."""
+        if not self._policy:
+            return self.allowed_commands, self.allowed_files
+        shared_cmds, shared_files = self._policy.get("_shared", ([], []))
+        own_cmds, own_files = self._policy.get(platform, ([], []))
+        return shared_cmds + own_cmds, shared_files + own_files
 
 
 # ---------------------------------------------------------------------------
@@ -156,31 +166,57 @@ def _parse_limits(raw, problems: list[str]) -> dict[str, int]:
     return limits
 
 
-def _parse_policy(raw, problems: list[str]) -> tuple[list[list[str]], list[str]]:
-    """The collector policy is the allow-list of what a collector may touch.
-
-    commands: each one is a list of words, e.g. ["arp", "-a"]. We store it as
-              a list (not one string) so it can never be run through a shell.
-    files:    exact file paths the collector may read.
-    """
-    if raw is None:
-        return [], []
-    if not isinstance(raw, dict):
-        problems.append("[collector_policy] must be a table")
-        return [], []
-    commands = raw.get("commands", [])
-    files = raw.get("files", [])
+def _parse_commands_files(table: dict, label: str, problems: list[str]):
+    commands = table.get("commands", [])
+    files = table.get("files", [])
     good_commands = []
     for cmd in commands if isinstance(commands, list) else [commands]:
         if (isinstance(cmd, list) and cmd
                 and all(isinstance(part, str) and part for part in cmd)):
             good_commands.append(cmd)
         else:
-            problems.append(f"[collector_policy] command {cmd!r} must be a list of words, e.g. [\"arp\", \"-a\"]")
+            problems.append(f"{label} command {cmd!r} must be a list of words, e.g. [\"arp\", \"-a\"]")
     if not isinstance(files, list) or not all(isinstance(f, str) and f for f in files):
-        problems.append("[collector_policy] files must be a list of paths")
+        problems.append(f"{label} files must be a list of paths")
         files = []
+    unknown = set(table) - {"commands", "files"} - set(PLATFORMS)
+    if unknown:
+        problems.append(f"{label} has unknown keys: {', '.join(sorted(unknown))}")
     return good_commands, files
+
+
+def _parse_policy(raw, problems: list[str]):
+    """The collector policy is the allow-list of what a collector may touch.
+
+    commands: each one is a list of words, e.g. ["arp", "-a"]. We store it as
+              a list (not one string) so it can never be run through a shell.
+    files:    exact file paths the collector may read.
+
+    Top-level commands/files apply on every platform. Sub-tables
+    [collector_policy.linux] and [collector_policy.windows] add entries that
+    apply ONLY on that platform (so Windows can never read /proc/...).
+
+    Returns (all commands, all files, {platform: (commands, files)}).
+    """
+    if raw is None:
+        return [], [], {}
+    if not isinstance(raw, dict):
+        problems.append("[collector_policy] must be a table")
+        return [], [], {}
+    commands, files = _parse_commands_files(raw, "[collector_policy]", problems)
+    per_platform = {}
+    for platform in PLATFORMS:
+        sub = raw.get(platform)
+        if sub is None:
+            continue
+        if not isinstance(sub, dict):
+            problems.append(f"[collector_policy.{platform}] must be a table")
+            continue
+        per_platform[platform] = _parse_commands_files(sub, f"[collector_policy.{platform}]", problems)
+    all_commands = commands + [c for cmds, _ in per_platform.values() for c in cmds]
+    all_files = files + [f for _, fs in per_platform.values() for f in fs]
+    shared = (commands, files)
+    return all_commands, all_files, {"_shared": shared, **per_platform}
 
 
 def _parse_files(folder: Path, raw, problems: list[str]) -> dict[str, Path]:
@@ -259,7 +295,7 @@ def load_manifest(folder: Path) -> Manifest:
     input_kind = input_table.get("kind", "none") if isinstance(input_table, dict) else None
     _check_choice(input_kind, INPUT_KINDS, "[input] kind", problems)
 
-    commands, allowed_files = _parse_policy(data.get("collector_policy"), problems)
+    commands, allowed_files, policy = _parse_policy(data.get("collector_policy"), problems)
     files = _parse_files(folder, data.get("files"), problems)
 
     requires = data.get("requires", {})
@@ -303,6 +339,7 @@ def load_manifest(folder: Path) -> Manifest:
         files=files,
         allowed_commands=commands,
         allowed_files=allowed_files,
+        _policy=policy,
         required_refdata=refdata,
         max_refdata_age_days=max_age,
         caveats=caveats,

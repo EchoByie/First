@@ -34,10 +34,13 @@ timeout_seconds = 180
 [input]
 kind = "none"
 
-# Exactly these, nothing else. Linux needs no commands at all.
-[collector_policy]
-commands = [["arp", "-a"], ["route", "print", "-4"]]        # Windows
-files = ["/proc/net/arp", "/proc/net/route"]                 # Linux
+# Exactly these, nothing else, and each only on its own platform.
+# Linux needs no commands at all: two plain file reads.
+[collector_policy.linux]
+files = ["/proc/net/arp", "/proc/net/route"]
+
+[collector_policy.windows]
+commands = [["arp", "-a"], ["route", "print", "-4"]]
 
 [requires]
 refdata = ["oui"]

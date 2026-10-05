@@ -1,7 +1,7 @@
 """Command-line entry point: `aicore <command>` or `python -m core.cli <command>`.
 
-Commands so far: version, list, models, run, dry-run, refdata. Later steps
-add health, update and console.
+Commands so far: version, list, models, run, dry-run, refdata, health.
+Later steps add update and console.
 
 We use argparse because it is built into Python and gives `--help` for free.
 """
@@ -26,6 +26,8 @@ from core.discovery import current_platform, discover
 from core.collecting import UserInput
 from core.models import gather_models, resolve_roles
 from core.pipeline import Pipeline, RunOptions
+from core.health import FAIL, OK, WARN
+from core.health.run import run_all
 from core.refdata.db import RefDataError, RefDB
 from core.refdata.importer import import_files
 
@@ -74,6 +76,10 @@ def build_parser() -> argparse.ArgumentParser:
                      help="e.g. oui.csv mam.csv oui36.csv iab.csv cid.csv")
     look = ref_sub.add_parser("lookup", help="look up the vendor of a MAC address")
     look.add_argument("mac")
+
+    health = sub.add_parser("health", help="check Ollama, models, reference data, dependencies, protocols")
+    health.add_argument("--json", action="store_true", help="print results as JSON (for scripts)")
+    health.add_argument("--protocols-dir", type=Path, default=None)
     return parser
 
 
@@ -294,6 +300,27 @@ def cmd_refdata(args) -> int:
         return 1
 
 
+STATUS_STYLE = {OK: "[green]● ok[/green]", WARN: "[yellow]● warn[/yellow]",
+                FAIL: "[red]● fail[/red]"}
+
+
+def cmd_health(args, backend=None) -> int:
+    report = run_all(load_config(), backend=backend, protocols_dir=args.protocols_dir)
+    if args.json:
+        print(json.dumps({"overall": report.overall,
+                          "results": [r.__dict__ for r in report.results]}, indent=2))
+        return 1 if report.overall == FAIL else 0
+    table = Table(title="Health")
+    for col in ("Area", "Check", "Status", "Details", "How to fix"):
+        table.add_column(col)
+    for r in report.results:
+        table.add_row(r.area, escape(r.name), STATUS_STYLE[r.status], escape(r.message),
+                      escape(r.fix))
+    console.print(table)
+    console.print(f"overall: {STATUS_STYLE[report.overall]}")
+    return 1 if report.overall == FAIL else 0
+
+
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     if args.command == "version":
@@ -306,6 +333,8 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_run(args)
     if args.command == "refdata":
         return cmd_refdata(args)
+    if args.command == "health":
+        return cmd_health(args)
     return 1  # unreachable: argparse rejects unknown commands
 
 
