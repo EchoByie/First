@@ -1,7 +1,7 @@
 """Command-line entry point: `aicore <command>` or `python -m core.cli <command>`.
 
-Commands so far: version, list. Each build step adds more
-(run, dry-run, health, update, models, console).
+Commands so far: version, list, models. Each build step adds more
+(run, dry-run, health, update, console).
 
 We use argparse because it is built into Python and gives `--help` for free.
 """
@@ -17,8 +17,10 @@ from rich.markup import escape
 from rich.table import Table
 
 from core import __version__
+from core.backends import BackendError, make_backend
 from core.config import load_config, resolve_path
 from core.discovery import current_platform, discover
+from core.models import gather_models, resolve_roles
 
 # Rich prints coloured tables; it falls back to plain text when output is
 # piped to a file.
@@ -40,6 +42,10 @@ def build_parser() -> argparse.ArgumentParser:
         "--protocols-dir", type=Path, default=None,
         help="look for protocols here instead of the folder in console.toml",
     )
+
+    models_cmd = sub.add_parser(
+        "models", help="show installed models and which one plays each protocol role")
+    models_cmd.add_argument("--protocols-dir", type=Path, default=None)
     return parser
 
 
@@ -96,12 +102,63 @@ def cmd_list(protocols_dir: Path | None) -> int:
     return 1 if found.broken else 0
 
 
+def cmd_models(protocols_dir: Path | None, backend=None) -> int:
+    """`backend` can be passed in by tests; normally it comes from console.toml."""
+    config = load_config()
+    try:
+        backend = backend or make_backend(config)
+        version = backend.version()
+        models = gather_models(backend)
+    except BackendError as e:
+        console.print(f"[red]✗ {escape(str(e))}[/red]")
+        return 1
+
+    console.print(f"[green]●[/green] {backend.kind} {escape(version)} at {escape(backend.url)}")
+    if not models:
+        console.print("[yellow]No models installed. Try: ollama pull llama3.1:8b[/yellow]")
+        return 1
+
+    table = Table(title="Installed models")
+    for col in ("Model", "Family", "Size (B params)", "Context (tokens)", "Can chat"):
+        table.add_column(col)
+    for m in models:
+        table.add_row(
+            escape(m.name), escape(m.family or "?"),
+            f"{m.parameters_billions:g}" if m.parameters_billions else "?",
+            f"{m.context_length:,}" if m.context_length else "?",
+            "[green]yes[/green]" if m.can_chat else "[red]no[/red]",
+        )
+    console.print(table)
+
+    found = discover(protocols_dir or resolve_path(config, "protocols"))
+    if not found.protocols:
+        return 0
+    roles_table = Table(title=escape("Role assignments (from console.toml [roles])"))
+    for col in ("Protocol", "Role", "Model", "Why"):
+        roles_table.add_column(col)
+    for manifest in found.protocols.values():
+        for role, choice in resolve_roles(manifest.roles, config["roles"], models).items():
+            optional = manifest.roles[role].optional
+            if choice.ok:
+                model_text = f"[green]{escape(choice.model)}[/green]"
+            elif optional:
+                model_text = "[yellow]none (optional)[/yellow]"
+            else:
+                model_text = "[red]none[/red]"
+            why = "; ".join([choice.reason] + choice.warnings)
+            roles_table.add_row(escape(manifest.name), role, model_text, escape(why))
+    console.print(roles_table)
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     if args.command == "version":
         return cmd_version()
     if args.command == "list":
         return cmd_list(args.protocols_dir)
+    if args.command == "models":
+        return cmd_models(args.protocols_dir)
     return 1  # unreachable: argparse rejects unknown commands
 
 
