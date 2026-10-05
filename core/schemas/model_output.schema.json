@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$comment": "The base contract every model answer must meet, for every protocol. A protocol's own output.schema.json can demand more on top of this. The 'findings' items are checked separately against finding.schema.json.",
+  "title": "ModelOutput",
+  "type": "object",
+  "required": ["summary", "findings"],
+  "properties": {
+    "summary": {"type": "string", "minLength": 1, "maxLength": 4000},
+    "findings": {"type": "array", "maxItems": 200},
+    "caveats": {
+      "type": "array", "maxItems": 20,
+      "items": {"type": "string", "maxLength": 500}
+    }
+  }
+}

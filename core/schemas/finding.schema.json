@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$comment": "One finding from the model. Every protocol's findings must look like this. Limits on lengths and counts stop a confused model from flooding the report.",
+  "title": "Finding",
+  "type": "object",
+  "required": ["claim", "evidence", "confidence", "basis"],
+  "additionalProperties": false,
+  "properties": {
+    "claim": {
+      "description": "What the model says is true, as a short sentence.",
+      "type": "string", "minLength": 1, "maxLength": 500
+    },
+    "evidence": {
+      "description": "Exact quotes copied from the input data. Code checks that each one really appears there.",
+      "type": "array", "minItems": 1, "maxItems": 10,
+      "items": {"type": "string", "minLength": 1, "maxLength": 300}
+    },
+    "confidence": {"enum": ["low", "medium", "high"]},
+    "basis": {
+      "description": "observed = read directly from the data; inferred = a guess built on the data.",
+      "enum": ["observed", "inferred"]
+    },
+    "kind": {
+      "description": "Optional label a protocol uses to group findings, e.g. anomaly, hypothesis, device_guess.",
+      "type": "string", "pattern": "^[a-z][a-z0-9_]{0,39}$"
+    },
+    "subject": {
+      "description": "Optional: what the finding is about, e.g. an IP address or a column name.",
+      "type": "string", "maxLength": 200
+    }
+  }
+}

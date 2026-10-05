@@ -31,8 +31,8 @@ Built in steps, with a review after each one.
 |---|---|---|
 | 1 | Project skeleton, config, test setup | ✅ |
 | 2 | Protocol manifests + discovery + `aicore list` | ✅ |
-| 3 | Schema validation + evidence verification (SURE / THINK) | ⏳ |
-| 4 | Model backend (Ollama, localhost only) + role resolver | |
+| 3 | Schema validation + evidence verification (SURE / THINK) | ✅ |
+| 4 | Model backend (Ollama, localhost only) + role resolver | ⏳ |
 | 5 | Pipeline, audit log, reports, `run` / `dry-run` | |
 | 6 | Digest protocol | |
 | 7 | Chunking (worker model → analyst model) | |
