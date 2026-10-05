@@ -96,8 +96,9 @@ def test_fake_facts_header_is_noticed():
 def test_model_sees_facts_first_then_original():
     data = digest_data(SAMPLES / "notes.txt")
     tag = data.meta["facts_tag"]
-    assert data.text.startswith(f"=== FACTS COMPUTED BY CODE (tag {tag}) ===")
-    assert data.text.endswith((SAMPLES / "notes.txt").read_text())
+    assert data.full_text().startswith(f"=== FACTS COMPUTED BY CODE (tag {tag}) ===")
+    assert data.full_text().endswith((SAMPLES / "notes.txt").read_text())
+    assert data.text == (SAMPLES / "notes.txt").read_text()   # data itself untouched
 
 
 @pytest.mark.parametrize("text", [

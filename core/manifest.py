@@ -41,7 +41,8 @@ REQUIRED_FILES = ("collector", "prompt", "output_schema")
 DEFAULT_LIMITS = {
     "chunk_threshold_chars": 12000,  # bigger input than this -> chunked path
     "chunk_size_chars": 6000,
-    "timeout_seconds": 120,
+    "max_chunks": 40,                # refuse inputs that would need more parts
+    "timeout_seconds": 120,          # per model call
 }
 
 

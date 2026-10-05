@@ -21,8 +21,9 @@ analyst = { min_context = 8192, needs_json = true }
 worker  = { min_context = 4096, optional = true }
 
 [limits]
-chunk_threshold_chars = 16000
-chunk_size_chars = 6000
+chunk_threshold_chars = 16000   # bigger inputs are read in parts by the worker
+chunk_size_chars = 8000
+max_chunks = 40
 timeout_seconds = 180
 
 [input]

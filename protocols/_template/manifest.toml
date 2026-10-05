@@ -26,7 +26,8 @@ worker  = { min_context = 4096, optional = true }   # only used for big inputs
 [limits]
 chunk_threshold_chars = 12000   # input bigger than this is split into chunks
 chunk_size_chars = 6000
-timeout_seconds = 120
+max_chunks = 40                 # refuse inputs that would need more parts
+timeout_seconds = 120           # per model call
 
 [input]
 kind = "none"                   # none | file_or_text

@@ -152,10 +152,11 @@ def test_crashing_collector_does_not_crash_console(setup, tmp_path):
     assert result.status == "failed" and "ZeroDivisionError" in result.errors[0]
 
 
-def test_oversized_input_is_stopped_before_model(setup):
+def test_input_needing_too_many_parts_is_stopped_before_model(setup):
     pipeline, manifest, backend = setup([good_answer()])
-    result = pipeline.run(manifest, text_input("x" * 20000))
-    assert result.status == "failed" and "single-pass limit" in result.errors[0]
+    lines = "\n".join(f"line {i} " + "x" * 90 for i in range(5000))   # ~500 KB
+    result = pipeline.run(manifest, text_input(lines))
+    assert result.status == "failed" and "at most 40" in result.errors[0]
     assert backend.calls == []
 
 

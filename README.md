@@ -35,8 +35,8 @@ Built in steps, with a review after each one.
 | 4 | Model backend (Ollama, localhost only) + role resolver | ✅ |
 | 5 | Pipeline, audit log, reports, `run` / `dry-run` | ✅ |
 | 6 | Digest protocol | ✅ |
-| 7 | Chunking (worker model → analyst model) | ⏳ |
-| 8 | Local reference database (SQLite) | |
+| 7 | Chunking (worker model → analyst model) | ✅ |
+| 8 | Local reference database (SQLite) | ⏳ |
 | 9 | Passive network map protocol | |
 | 10 | Health checks | |
 | 11 | Update section (reference data downloads) | |

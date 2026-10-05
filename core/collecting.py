@@ -15,9 +15,15 @@ It can:
     ctx.run([...])          a command from the manifest's allow-list
     ctx.platform            "linux" or "windows"
 
-CollectedData.text is exactly what the model will see, and is also what
-evidence quotes are checked against. Keeping that one string as the single
-source of truth is what makes the SURE / THINK check meaningful.
+What the model sees is CollectedData.full_text():
+
+    preamble   short context that must ALWAYS be shown, even when a big
+               input is split into parts (e.g. the digest's computed facts)
+    text       the data itself; this is what gets split into parts
+
+full_text() is also exactly what evidence quotes are checked against.
+Keeping that one string as the single source of truth is what makes the
+SURE / THINK check meaningful.
 """
 
 from __future__ import annotations
@@ -52,10 +58,15 @@ class UserInput:
 
 @dataclass
 class CollectedData:
-    text: str                                       # exactly what the model sees
+    text: str                                       # the data (split if big)
     records: list[dict] = field(default_factory=list)  # structured rows, for reports
     meta: dict = field(default_factory=dict)        # e.g. {"source": "/proc/net/arp"}
     caveats: list[str] = field(default_factory=list)   # added to the report by code
+    preamble: str = ""                              # always shown, never split
+
+    def full_text(self) -> str:
+        """Everything the model may quote from: preamble, then the data."""
+        return f"{self.preamble}\n{self.text}" if self.preamble else self.text
 
     @classmethod
     def coerce(cls, value, who: str) -> "CollectedData":
@@ -68,10 +79,11 @@ class CollectedData:
                 records=list(value.get("records", [])),
                 meta=dict(value.get("meta", {})),
                 caveats=list(value.get("caveats", [])),
+                preamble=str(value.get("preamble", "")),
             )
         else:
             raise CollectorError(f"{who} must return CollectedData or a dict with a 'text' string")
-        if not isinstance(data.text, str):
+        if not isinstance(data.text, str) or not isinstance(data.preamble, str):
             raise CollectorError(f"{who} returned non-text data")
         return data
 

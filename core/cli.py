@@ -227,6 +227,14 @@ def cmd_run(args, backend=None) -> int:
                             expand=False))
         if args.full:
             console.print(Panel(escape(json.dumps(p["schema"], indent=2)), title="answer schema"))
+        if p.get("parts"):
+            console.print(f"  [bold]big input:[/bold] {len(p['parts'])} parts, read by the worker, "
+                          "then combined by the analyst")
+            for label in p["parts"][:10]:
+                console.print(f"    - {escape(label)}")
+            if len(p["parts"]) > 10:
+                console.print(f"    ... and {len(p['parts']) - 10} more")
+            console.print(f"  [dim]{escape(p['note'])}[/dim]")
         console.print(f"  models: {escape(str(p['models']))}")
         console.print(f"  estimated prompt tokens: {p['estimated_prompt_tokens']:,}   "
                       f"context window requested: {p['context_tokens']:,}")

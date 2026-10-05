@@ -12,7 +12,7 @@ class FakeBackend(ModelBackend):
     kind = "fake"
     url = "fake://local"
 
-    def __init__(self, models=None, replies=None, fail=False):
+    def __init__(self, models=None, replies=None, fail=False, responder=None):
         self.models = models if models is not None else [
             ModelInfo("big:70b", "llama", 70.0, 131072, ["completion"]),
             ModelInfo("mid:8b", "llama", 8.0, 131072, ["completion"]),
@@ -21,6 +21,7 @@ class FakeBackend(ModelBackend):
         ]
         self.replies = list(replies or [])
         self.fail = fail
+        self.responder = responder   # optional function(call) -> reply text
         self.calls = []
 
     def _check(self):
@@ -44,8 +45,11 @@ class FakeBackend(ModelBackend):
 
     def chat_json(self, model, system, user, schema, context_tokens, timeout):
         self._check()
-        self.calls.append(dict(model=model, system=system, user=user, schema=schema,
-                               context_tokens=context_tokens, timeout=timeout))
+        call = dict(model=model, system=system, user=user, schema=schema,
+                    context_tokens=context_tokens, timeout=timeout)
+        self.calls.append(call)
+        if self.responder is not None:
+            return ChatResult(text=self.responder(call), model=model)
         if not self.replies:
             raise BackendError("fake backend has no more replies")
         return ChatResult(text=self.replies.pop(0), model=model)

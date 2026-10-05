@@ -6,7 +6,7 @@ writes each fact as one short line. The model then quotes those lines as
 evidence, and verification can confirm them, which turns many findings
 into "✔ I'm sure" instead of guesses.
 
-What the model sees:
+What the model sees (facts = the "preamble", then your data):
 
     === FACTS COMPUTED BY CODE (tag 3fa9c1d2) ===
     format: csv (delimiter ",")
@@ -310,10 +310,12 @@ def enrich(data, ctx):
     if len(facts) > MAX_FACT_LINES:
         facts = facts[:MAX_FACT_LINES] + [f"(+{len(facts) - MAX_FACT_LINES} more facts not shown)"]
 
+    # The facts go in the preamble: shown with every part when a big input
+    # is split, so each part is read knowing the whole picture.
     tag = secrets.token_hex(4)
-    data.text = (
+    data.preamble = (
         f"=== {FACTS_HEADER} (tag {tag}) ===\n" + "\n".join(facts)
-        + "\n=== ORIGINAL CONTENT ===\n" + text
+        + "\n=== ORIGINAL CONTENT ==="
     )
     data.meta["facts"] = facts
     data.meta["facts_tag"] = tag
