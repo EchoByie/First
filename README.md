@@ -36,8 +36,8 @@ Built in steps, with a review after each one.
 | 5 | Pipeline, audit log, reports, `run` / `dry-run` | ✅ |
 | 6 | Digest protocol | ✅ |
 | 7 | Chunking (worker model → analyst model) | ✅ |
-| 8 | Local reference database (SQLite) | ⏳ |
-| 9 | Passive network map protocol | |
+| 8 | Local reference database (SQLite) | ✅ |
+| 9 | Passive network map protocol | ⏳ |
 | 10 | Health checks | |
 | 11 | Update section (reference data downloads) | |
 | 12 | Prompt-injection test suite | |
@@ -72,6 +72,31 @@ the model's answer, never the data itself.
 aicore run digest --file tests/fixtures/digest/app.log
 cat some.log | aicore run digest --file -
 ```
+
+## Reference data (MAC vendors)
+
+The network map looks up MAC vendors in a local SQLite database
+(`data/reference.db`), built from the IEEE registries. Until the Update
+section exists (build step 11), download the files yourself and import them:
+
+| Registry | File |
+|---|---|
+| MA-L (large blocks, the classic "OUI") | https://standards-oui.ieee.org/oui/oui.csv |
+| MA-M (medium blocks) | https://standards-oui.ieee.org/oui28/mam.csv |
+| MA-S (small blocks) | https://standards-oui.ieee.org/oui36/oui36.csv |
+| IAB (older small blocks) | https://standards-oui.ieee.org/iab/iab.csv |
+| CID (company IDs) | https://standards-oui.ieee.org/cid/cid.csv |
+
+```bash
+aicore refdata import oui.csv mam.csv oui36.csv iab.csv cid.csv
+aicore refdata status                  # entries per registry, age, source
+aicore refdata lookup a4:2b:b0:11:22:33
+```
+
+Files are checked before anything changes: wrong columns or more than 1%
+bad rows means the import is refused and the old data stays. A good file
+replaces its registry completely, and the database is swapped in in one
+step, so it is never left half-written.
 
 ## Adding a protocol
 

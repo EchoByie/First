@@ -1,7 +1,7 @@
 """Command-line entry point: `aicore <command>` or `python -m core.cli <command>`.
 
-Commands so far: version, list, models, run, dry-run. Later steps add
-health, update and console.
+Commands so far: version, list, models, run, dry-run, refdata. Later steps
+add health, update and console.
 
 We use argparse because it is built into Python and gives `--help` for free.
 """
@@ -26,6 +26,8 @@ from core.discovery import current_platform, discover
 from core.collecting import UserInput
 from core.models import gather_models, resolve_roles
 from core.pipeline import Pipeline, RunOptions
+from core.refdata.db import RefDataError, RefDB
+from core.refdata.importer import import_files
 
 # Rich prints coloured tables; it falls back to plain text when output is
 # piped to a file.
@@ -63,6 +65,15 @@ def build_parser() -> argparse.ArgumentParser:
         cmd.add_argument("--protocols-dir", type=Path, default=None)
         if name == "dry-run":
             cmd.add_argument("--full", action="store_true", help="print the data and schema in full")
+
+    ref = sub.add_parser("refdata", help="the local reference database (MAC vendors, ...)")
+    ref_sub = ref.add_subparsers(dest="refdata_command", required=True)
+    ref_sub.add_parser("status", help="what is in the database and how old it is")
+    imp = ref_sub.add_parser("import", help="import IEEE registry CSV files you downloaded")
+    imp.add_argument("files", nargs="+", type=Path,
+                     help="e.g. oui.csv mam.csv oui36.csv iab.csv cid.csv")
+    look = ref_sub.add_parser("lookup", help="look up the vendor of a MAC address")
+    look.add_argument("mac")
     return parser
 
 
@@ -250,6 +261,39 @@ def cmd_run(args, backend=None) -> int:
     return 0 if result.status == "ok" else 1
 
 
+def cmd_refdata(args) -> int:
+    db_path = resolve_path(load_config(), "reference_db")
+    try:
+        if args.refdata_command == "import":
+            for r in import_files(db_path, args.files):
+                skipped = f", skipped {r.skipped} bad/duplicate row(s)" if r.skipped else ""
+                console.print(f"[green]✔[/green] {r.registry}: {r.rows:,} entries{skipped}  "
+                              f"[dim]{escape(r.origin)}[/dim]")
+                for problem in r.problems:
+                    console.print(f"    [yellow]{escape(problem)}[/yellow]")
+            return 0
+        with RefDB(db_path) as db:
+            if args.refdata_command == "status":
+                table = Table(title=f"Reference data ({db_path})")
+                for col in ("Dataset", "Registry", "Entries", "Imported (UTC)", "Age", "From"):
+                    table.add_column(col)
+                for src in db.sources():
+                    table.add_row(src.dataset, src.registry, f"{src.rows:,}", src.imported_at,
+                                  f"{src.age_days():.0f} days", escape(src.origin))
+                console.print(table)
+            else:   # lookup
+                match = db.vendor(args.mac, include_cid=True)
+                if match is None:
+                    console.print("no vendor found (not registered, or not a valid MAC address)")
+                    return 1
+                console.print(f"{escape(match.organization)}  [dim]{match.registry} "
+                              f"{match.prefix}[/dim]")
+        return 0
+    except RefDataError as e:
+        console.print(f"[red]✗ {escape(str(e))}[/red]")
+        return 1
+
+
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     if args.command == "version":
@@ -260,6 +304,8 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_models(args.protocols_dir)
     if args.command in ("run", "dry-run"):
         return cmd_run(args)
+    if args.command == "refdata":
+        return cmd_refdata(args)
     return 1  # unreachable: argparse rejects unknown commands
 
 
