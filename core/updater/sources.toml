@@ -1,0 +1,38 @@
+# The ONLY places the Update section may download from.
+#
+# Rules enforced in code (core/updater/fetch.py):
+#   - https only, to the exact hosts that appear in this file
+#   - redirects are followed only if they stay on those hosts over https
+#   - nothing is downloaded unless you ask (button / `aicore update`)
+#   - downloaded files are checked like any import before they replace
+#     anything; a bad download leaves the old data in place
+
+[[source]]
+registry = "MA-L"
+dataset = "oui"
+url = "https://standards-oui.ieee.org/oui/oui.csv"
+about = "Large blocks (the classic OUI), about 5 MB"
+
+[[source]]
+registry = "MA-M"
+dataset = "oui"
+url = "https://standards-oui.ieee.org/oui28/mam.csv"
+about = "Medium blocks"
+
+[[source]]
+registry = "MA-S"
+dataset = "oui"
+url = "https://standards-oui.ieee.org/oui36/oui36.csv"
+about = "Small blocks"
+
+[[source]]
+registry = "IAB"
+dataset = "oui"
+url = "https://standards-oui.ieee.org/iab/iab.csv"
+about = "Older small blocks (no longer issued, still in use)"
+
+[[source]]
+registry = "CID"
+dataset = "oui"
+url = "https://standards-oui.ieee.org/cid/cid.csv"
+about = "Company IDs (used in some locally administered addresses)"

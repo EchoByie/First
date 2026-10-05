@@ -19,7 +19,8 @@ text dashboard.
   - **? THINK**: "I think X, but I'm not sure". The finding is inferred, or its evidence could not be found.
 - Network use: Ollama on localhost only. The one exception is the **Update**
   section, which downloads reference data (such as the IEEE MAC vendor
-  registry) from a fixed list of URLs, and only when you ask it to.
+  registry) from a fixed list of URLs, and only when you ask it to. A test
+  checks that only these two files in the framework can use the network.
 - It isn't tied to any one model. Protocols ask for *roles* (`analyst`,
   `worker`), and `config/console.toml` decides which model fills each role.
 
@@ -39,8 +40,8 @@ Built in steps, with a review after each one.
 | 8 | Local reference database (SQLite) | ✅ |
 | 9 | Passive network map protocol | ✅ |
 | 10 | Health checks | ✅ |
-| 11 | Update section (reference data downloads) | ⏳ |
-| 12 | Prompt-injection test suite | |
+| 11 | Update section (reference data downloads) | ✅ |
+| 12 | Prompt-injection test suite | ⏳ |
 | 13 | Full-screen dashboard (Textual) | |
 | 14 | Tuning against your real Ollama | |
 
@@ -79,8 +80,21 @@ cat some.log | aicore run digest --file -
 ## Reference data (MAC vendors)
 
 The network map looks up MAC vendors in a local SQLite database
-(`data/reference.db`), built from the IEEE registries. Until the Update
-section exists (build step 11), download the files yourself and import them:
+(`data/reference.db`), built from the IEEE registries.
+
+**Update section** (`aicore update`, or the Update tab in the dashboard):
+shows each registry's age and downloads fresh copies **only when you ask**,
+and only from the hosts listed in `core/updater/sources.toml` (https,
+standards-oui.ieee.org). Every download is checked like an import, and a
+failed or bad download keeps the old data. Each attempt is in the audit log.
+
+```bash
+aicore update              # what's there and how old it is
+aicore update --all        # download all five registries
+aicore update MA-L MA-S    # just these
+```
+
+No internet on this machine? Download the files elsewhere and import them:
 
 | Registry | File |
 |---|---|

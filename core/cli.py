@@ -1,7 +1,7 @@
 """Command-line entry point: `aicore <command>` or `python -m core.cli <command>`.
 
-Commands so far: version, list, models, run, dry-run, refdata, health.
-Later steps add update and console.
+Commands: version, list, models, run, dry-run, refdata, health, update.
+The dashboard adds: console.
 
 We use argparse because it is built into Python and gives `--help` for free.
 """
@@ -30,6 +30,7 @@ from core.health import FAIL, OK, WARN
 from core.health.run import run_all
 from core.refdata.db import RefDataError, RefDB
 from core.refdata.importer import import_files
+from core.updater import fetch as updater
 
 # Rich prints coloured tables; it falls back to plain text when output is
 # piped to a file.
@@ -80,6 +81,11 @@ def build_parser() -> argparse.ArgumentParser:
     health = sub.add_parser("health", help="check Ollama, models, reference data, dependencies, protocols")
     health.add_argument("--json", action="store_true", help="print results as JSON (for scripts)")
     health.add_argument("--protocols-dir", type=Path, default=None)
+
+    upd = sub.add_parser("update", help="show reference data age, or download fresh copies")
+    which = upd.add_mutually_exclusive_group()
+    which.add_argument("--all", action="store_true", help="download every allow-listed registry")
+    which.add_argument("registries", nargs="*", default=[], help="e.g. MA-L MA-S")
     return parser
 
 
@@ -321,6 +327,41 @@ def cmd_health(args, backend=None) -> int:
     return 1 if report.overall == FAIL else 0
 
 
+def cmd_update(args, fetch=None) -> int:
+    config = load_config()
+    if not args.all and not args.registries:
+        table = Table(title="Reference data sources (allow-listed)")
+        for col in ("Registry", "Entries", "Age", "Source", "About"):
+            table.add_column(col)
+        for st in updater.status(config):
+            age = f"{st.age_days:.0f} days" if st.age_days is not None else "[red]never[/red]"
+            entries = f"{st.rows:,}" if st.rows is not None else "-"
+            table.add_row(st.source.registry, entries, age, st.source.url, st.source.about)
+        console.print(table)
+        console.print("Download with: aicore update --all   (or name registries: aicore update MA-L)")
+        return 0
+
+    chosen = None if args.all else args.registries
+    console.print("[bold]Downloading reference data[/bold] (only from the hosts in "
+                  "core/updater/sources.toml)")
+    last = {}
+
+    def progress(name, done, total):
+        step = done // 1_000_000
+        if last.get(name) != step:            # print about once per MB
+            last[name] = step
+            size = f" of {total / 1e6:.1f} MB" if total else ""
+            console.print(f"  {name}: {done / 1e6:.1f} MB{size}")
+
+    result = updater.update(config, chosen, progress=progress,
+                            **({"fetch": fetch} if fetch else {}))
+    for r in result.imported:
+        console.print(f"[green]✔[/green] {r.registry}: {r.rows:,} entries")
+    for name, error in result.errors.items():
+        console.print(f"[red]✗ {escape(name)}: {escape(error)}[/red] (old data kept)")
+    return 1 if result.errors else 0
+
+
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     if args.command == "version":
@@ -335,6 +376,8 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_refdata(args)
     if args.command == "health":
         return cmd_health(args)
+    if args.command == "update":
+        return cmd_update(args)
     return 1  # unreachable: argparse rejects unknown commands
 
 

@@ -23,6 +23,7 @@ import os
 import shutil
 import sqlite3
 import tempfile
+import time
 from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -187,10 +188,22 @@ def writable_copy(path: Path):
             tmp.unlink()
 
 
-def replace_atomically(new_file: Path, target: Path) -> None:
+def replace_atomically(new_file: Path, target: Path, attempts: int = 10) -> None:
     """os.replace is atomic: readers see either the old file or the new
-    one, never a mix. Works on Linux and Windows."""
-    os.replace(new_file, target)
+    one, never a mix. Works on Linux and Windows.
+
+    Windows refuses to replace a file another program has open (for example
+    the dashboard reading vendor data at that moment), so we retry briefly.
+    """
+    for attempt in range(attempts):
+        try:
+            os.replace(new_file, target)
+            return
+        except PermissionError:
+            if attempt == attempts - 1:
+                raise RefDataError(f"{target} is in use; close other programs using it "
+                                   "and try again") from None
+            time.sleep(0.2)
 
 
 def now_utc() -> str:
