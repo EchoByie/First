@@ -24,6 +24,7 @@ evidence is.
 
 from __future__ import annotations
 
+import bisect
 import copy
 import re
 import unicodedata
@@ -52,6 +53,34 @@ _ELLIPSIS = re.compile(r"\s*(?:\.\.\.|…)\s*")
 FOUND = "found"
 MISSING = "missing"
 TOO_SHORT = "too_short"
+SUSPICIOUS = "suspicious_only"   # only appears inside text that looks like an attack
+
+
+class Corpus:
+    """The data, normalised, plus which parts of it are suspicious lines.
+
+    Built line by line so we know, for any position in the normalised text,
+    which original line it came from (see core/injection.py for what counts
+    as suspicious).
+    """
+
+    def __init__(self, text: str, check_injection: bool = True):
+        from core.injection import classify   # imported here to avoid a circular import
+        parts, self._starts, self._bad = [], [], []
+        position = 0
+        for line in text.splitlines():
+            norm = normalise(line)
+            if not norm:
+                continue
+            parts.append(norm)
+            self._starts.append(position)
+            self._bad.append(bool(check_injection and classify(line)))
+            position += len(norm) + 1      # +1 for the joining space
+        self.text = " ".join(parts)
+
+    def is_suspicious(self, index: int) -> bool:
+        line = bisect.bisect_right(self._starts, index) - 1
+        return 0 <= line < len(self._bad) and self._bad[line]
 
 
 def normalise(text: str) -> str:
@@ -73,41 +102,54 @@ def _strip_wrapping(quote: str) -> str:
     return quote.strip().strip("\"'`").strip()
 
 
-def check_quote(quote: str, corpus_normalised: str) -> str:
-    """Look for one quote in the (already normalised) data.
+def check_quote(quote: str, corpus: "Corpus | str") -> str:
+    """Look for one quote in the data.
 
-    With an ellipsis, every piece must be found, in order.
+    With an ellipsis, every piece must be found, in order. A match inside a
+    suspicious line doesn't count; if that's the only place the quote
+    appears, the result is SUSPICIOUS rather than FOUND.
     """
+    if isinstance(corpus, str):            # plain normalised text: no injection check
+        text, is_bad = corpus, (lambda i: False)
+    else:
+        text, is_bad = corpus.text, corpus.is_suspicious
     pieces = [normalise(p) for p in _ELLIPSIS.split(_strip_wrapping(quote))]
     pieces = [p for p in pieces if p]
     if not pieces or sum(len(p) for p in pieces) < MIN_QUOTE_CHARS:
         return TOO_SHORT
     position = 0
+    saw_suspicious = False
     for piece in pieces:
         if len(pieces) > 1 and len(piece) < MIN_QUOTE_CHARS:
             return TOO_SHORT  # "a ... b" proves nothing
-        index = _find_whole(piece, corpus_normalised, position)
+        index, rejected = _find_whole(piece, text, position, is_bad)
+        saw_suspicious = saw_suspicious or rejected
         if index == -1:
-            return MISSING
+            return SUSPICIOUS if saw_suspicious else MISSING
         position = index + len(piece)
     return FOUND
 
 
-def _find_whole(piece: str, corpus: str, start: int) -> int:
-    """Like str.find, but the match may not cut a word or number in half.
+def _find_whole(piece: str, corpus: str, start: int, reject=lambda i: False) -> tuple[int, bool]:
+    """Like str.find, but the match may not cut a word or number in half,
+    and may not sit in a rejected (suspicious) line.
 
-    Without this, the quote "192.168.1.2" would be "found" inside
+    Without the first rule, the quote "192.168.1.2" would be "found" inside
     "192.168.1.20", which is a different device.
+    Returns (index or -1, whether a match was skipped as suspicious).
     """
+    rejected = False
     index = corpus.find(piece, start)
     while index != -1:
         end = index + len(piece)
         cuts_start = piece[0].isalnum() and _joined(corpus, index - 1, -1)
         cuts_end = piece[-1].isalnum() and _joined(corpus, end, +1)
         if not cuts_start and not cuts_end:
-            return index
+            if not reject(index):
+                return index, rejected
+            rejected = True
         index = corpus.find(piece, index + 1)
-    return -1
+    return -1, rejected
 
 
 def _joined(corpus: str, i: int, step: int) -> bool:
@@ -138,11 +180,11 @@ def statement(claim: str, verdict: str) -> str:
     return f"I think {claim}, but I'm not sure."
 
 
-def verify_finding(finding: dict, corpus_normalised: str) -> dict:
+def verify_finding(finding: dict, corpus: "Corpus | str") -> dict:
     """Return a copy of one finding with a 'verification' section added."""
     result = copy.deepcopy(finding)
     checks = [
-        {"quote": quote, "status": check_quote(quote, corpus_normalised)}
+        {"quote": quote, "status": check_quote(quote, corpus)}
         for quote in finding["evidence"]
     ]
     all_found = all(c["status"] == FOUND for c in checks)
@@ -151,6 +193,9 @@ def verify_finding(finding: dict, corpus_normalised: str) -> dict:
     if not all_found:
         bad = sum(c["status"] != FOUND for c in checks)
         notes.append(f"unverified evidence: {bad} of {len(checks)} quote(s) not found in the data")
+        if any(c["status"] == SUSPICIOUS for c in checks):
+            notes.append("possible injection: some evidence appears only inside text that looks "
+                         "like instructions to an AI or a forged answer")
         # Downgrade. Keep the model's own words so nothing is hidden.
         if finding["basis"] != "inferred" or finding["confidence"] != "low":
             result["basis"] = "inferred"
@@ -185,9 +230,9 @@ def verify_output(output: dict, corpus: str) -> dict:
     because those are the only quotes the model could have honestly copied.
     Returns a new dict; the input is not changed.
     """
-    corpus_normalised = normalise(corpus)
+    checked = Corpus(corpus)
     result = copy.deepcopy(output)
-    result["findings"] = [verify_finding(f, corpus_normalised) for f in output["findings"]]
+    result["findings"] = [verify_finding(f, checked) for f in output["findings"]]
 
     verdicts = [f["verification"] for f in result["findings"]]
     result["verification_summary"] = {

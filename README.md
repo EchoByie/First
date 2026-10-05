@@ -24,6 +24,24 @@ text dashboard.
 - It isn't tied to any one model. Protocols ask for *roles* (`analyst`,
   `worker`), and `config/console.toml` decides which model fills each role.
 
+## Prompt injection
+
+Collected data may contain text written to fool the model ("ignore previous
+instructions", a fake `SYSTEM:` line, a forged answer, a fake end-of-data
+marker). The defences don't rely on the model resisting:
+
+- the model has no tools, and its answer may only contain the fields the
+  schema names (no `run_command`, no self-awarded verdicts)
+- data is fenced with a random marker the data can't predict
+- `core/injection.py` flags suspicious lines; protocols report them, and a
+  quote that appears **only** inside such a line is not accepted as
+  evidence, so planted "findings" can't come out as ✔ SURE
+- big inputs: worker notes are checked before the analyst sees them, and
+  worker summaries are never evidence
+
+`tests/test_injection.py` runs a catalogue of these tricks against a
+deliberately gullible fake model.
+
 ## Status
 
 Built in steps, with a review after each one.
@@ -41,8 +59,8 @@ Built in steps, with a review after each one.
 | 9 | Passive network map protocol | ✅ |
 | 10 | Health checks | ✅ |
 | 11 | Update section (reference data downloads) | ✅ |
-| 12 | Prompt-injection test suite | ⏳ |
-| 13 | Full-screen dashboard (Textual) | |
+| 12 | Prompt-injection test suite | ✅ |
+| 13 | Full-screen dashboard (Textual) | ⏳ |
 | 14 | Tuning against your real Ollama | |
 
 ## Setup

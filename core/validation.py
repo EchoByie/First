@@ -162,4 +162,8 @@ def build_answer_schema(protocol_schema: dict | None = None,
                 schema["required"].append(name)
         if "$defs" in protocol_schema:
             schema["$defs"] = copy.deepcopy(protocol_schema["$defs"])
+    # Only the fields named above are allowed. An answer that adds anything
+    # else (e.g. "tool_calls" or "run_command") is rejected. Nothing would
+    # execute it anyway, but it should not even end up in a report.
+    schema["additionalProperties"] = False
     return schema

@@ -32,20 +32,13 @@ import statistics
 from collections import Counter
 from datetime import datetime
 
+from core.injection import suspicious_lines
+
 MAX_FACT_LINES = 80
 MAX_COLUMNS = 30
 MAX_OUTLIERS_PER_COLUMN = 3
 FACTS_HEADER = "FACTS COMPUTED BY CODE"
 
-# Phrases that look like someone trying to give orders to an AI. Finding them
-# doesn't mean an attack, but you should know they are in the data.
-INSTRUCTION_LIKE = re.compile(
-    r"ignore (all |any )?(the )?(previous|prior|above|earlier) (instructions|prompts?)"
-    r"|disregard (all|the|previous|prior|your)"
-    r"|you are now\b|new instructions|system prompt|act as (a|an|the)\b"
-    r"|do not (tell|report|mention)",
-    re.IGNORECASE,
-)
 ISO_TIMESTAMP = re.compile(r"\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}")
 LOG_LEVEL = re.compile(r"\b(CRITICAL|FATAL|ERROR|WARN(?:ING)?|INFO|DEBUG|TRACE)\b")
 
@@ -269,13 +262,15 @@ def text_facts(text: str) -> list[str]:
 
 
 def safety_facts(text: str) -> list[str]:
-    facts = []
-    for n, line in enumerate(text.splitlines(), start=1):
-        match = INSTRUCTION_LIKE.search(line)
-        if match:
-            facts.append(f'line {n} contains instruction-like text: "{_short(match.group(), 60)}"')
-        if len(facts) >= 5:
-            break
+    """Lines that look like attempts to steer the model (see core/injection.py).
+
+    The fact names the line and the kind of trick but deliberately does NOT
+    repeat the suspicious words, so this fact line stays clean evidence.
+    """
+    found = suspicious_lines(text)
+    facts = [f"line {n} looks like an attempt to steer an AI ({reason})" for n, reason in found[:5]]
+    if len(found) > 5:
+        facts.append(f"{len(found) - 5} more line(s) look like attempts to steer an AI")
     if FACTS_HEADER.casefold() in text.casefold():
         facts.append("the input itself contains text imitating the facts header")
     return facts

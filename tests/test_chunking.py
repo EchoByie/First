@@ -168,11 +168,15 @@ def test_dry_run_chunked_works_offline(tmp_path):
 def test_digest_facts_reach_every_worker(tmp_path):
     log = "\n".join(f"2024-05-01 {h:02d}:{m:02d}:00 INFO heartbeat {h * 60 + m} " + "-" * 40
                     for h in range(6) for m in range(60))      # 360 lines, ~27k chars
-    backend = FakeBackend(responder=lambda call: json.dumps({
-        "summary": "Heartbeats.", "next_steps": [],
-        "findings": [{"kind": "observation", "claim": "There are 360 timestamps",
-                      "evidence": ["timestamps found: 360 of 360 lines"],
-                      "confidence": "high", "basis": "observed"}]}))
+    def respond(call):
+        answer = {"summary": "Heartbeats.",
+                  "findings": [{"kind": "observation", "claim": "There are 360 timestamps",
+                                "evidence": ["timestamps found: 360 of 360 lines"],
+                                "confidence": "high", "basis": "observed"}]}
+        if "NOTES FROM PART" in call["user"]:      # only the final answer has next_steps
+            answer["next_steps"] = []
+        return json.dumps(answer)
+    backend = FakeBackend(responder=respond)
     result = run(tmp_path, backend, text=log, folder=DIGEST)
     assert result.status == "ok", result.errors
     worker_calls = [c for c in backend.calls if "=== PART" in c["user"]]

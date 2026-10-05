@@ -80,7 +80,8 @@ def test_log_facts():
     assert "largest gap between lines: 3h 22m 35s (after 2024-05-01 00:20:15)" in f
     assert "levels: INFO 6, ERROR 4, WARN 1" in f
     assert '3 times: "ERROR connection to db-# refused (attempt #)"' in f
-    assert 'line 9 contains instruction-like text: "ignore previous instructions"' in f
+    assert "line 9 looks like an attempt to steer an AI (instruction-like text)" in f
+    assert "ignore previous" not in f.split("line 9 looks")[1]      # the words aren't repeated
 
 
 def test_text_facts():
@@ -147,7 +148,7 @@ def digest_answer():
              "evidence": ["connection to db-1 refused (attempt 3)", "service started"],
              "confidence": "medium", "basis": "inferred"},
             {"kind": "anomaly", "claim": "Line 9 tries to give instructions to an AI",
-             "evidence": ["line 9 contains instruction-like text"],
+             "evidence": ["line 9 looks like an attempt to steer an AI"],
              "confidence": "high", "basis": "observed", "subject": "line 9"},
         ],
         "next_steps": ["Check db-1's own logs for 00:20 on 1 May."],

@@ -53,6 +53,8 @@ def new_marker_code() -> str:
 def build_messages(task_prompt: str, data_text: str, marker: str | None = None) -> tuple[str, str]:
     """Return (system_message, user_message)."""
     marker = marker or new_marker_code()
+    while marker in data_text:      # practically never; but never let data contain the marker
+        marker = new_marker_code()
     system = (
         SYSTEM_RULES
         + f"\nThe data is between <<<DATA {marker}>>> and <<<END DATA {marker}>>>.\n"
