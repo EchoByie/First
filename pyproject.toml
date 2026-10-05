@@ -31,5 +31,9 @@ aicore = "core.cli:main"
 [tool.setuptools.packages.find]
 include = ["core*"]
 
+[tool.setuptools.package-data]
+core = ["schemas/*.json", "tui/*.tcss", "updater/*.toml"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+asyncio_mode = "auto"          # dashboard tests are async (Textual's test pilot)

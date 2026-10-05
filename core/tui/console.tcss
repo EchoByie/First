@@ -1,0 +1,115 @@
+/* Look of the dashboard. Textual's CSS works like web CSS, for terminals. */
+
+Screen {
+    layout: horizontal;
+    background: $surface;
+}
+
+#status-bar {
+    dock: top;
+    height: 1;
+    background: $primary-darken-2;
+    color: $text;
+    padding: 0 1;
+}
+
+#left {
+    width: 38;
+    border-right: heavy $primary;
+    padding: 1 1 0 1;
+}
+
+#banner {
+    color: $accent;
+    text-style: bold;
+    height: auto;
+    margin-bottom: 1;
+}
+
+.pane-title {
+    text-style: bold;
+    color: $secondary;
+    margin-top: 1;
+}
+
+#protocols {
+    height: auto;
+    max-height: 10;
+    border: round $primary;
+}
+
+#input {
+    margin-top: 1;
+}
+
+#input-hint {
+    color: $text-muted;
+    height: auto;
+}
+
+#health {
+    height: 1fr;
+    border: round $primary;
+    padding: 0 1;
+}
+
+#right {
+    width: 1fr;
+}
+
+#summary {
+    height: auto;
+    padding: 0 1;
+    border: round $success;
+    margin-bottom: 1;
+}
+
+#steps {
+    height: 8;
+    border: round $primary;
+}
+
+#findings, #devices {
+    height: auto;
+    max-height: 20;
+}
+
+#caveats {
+    color: $warning;
+    height: auto;
+    padding: 0 1;
+}
+
+#durations {
+    height: 3;
+    margin: 1 0;
+}
+
+#update-buttons {
+    height: 3;
+}
+
+#update-buttons Button {
+    margin-right: 2;
+}
+
+#boot {
+    layer: overlay;
+    width: 100%;
+    height: 100%;
+    background: $background;
+    color: $success;
+    padding: 2 4;
+}
+
+ConfirmScreen {
+    align: center middle;
+}
+
+#confirm-box {
+    width: 60;
+    height: auto;
+    border: thick $error;
+    background: $panel;
+    padding: 1 2;
+}

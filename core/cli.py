@@ -1,7 +1,7 @@
 """Command-line entry point: `aicore <command>` or `python -m core.cli <command>`.
 
-Commands: version, list, models, run, dry-run, refdata, health, update.
-The dashboard adds: console.
+Commands: version, list, models, run, dry-run, refdata, health, update,
+console (the full-screen dashboard).
 
 We use argparse because it is built into Python and gives `--help` for free.
 """
@@ -86,6 +86,8 @@ def build_parser() -> argparse.ArgumentParser:
     which = upd.add_mutually_exclusive_group()
     which.add_argument("--all", action="store_true", help="download every allow-listed registry")
     which.add_argument("registries", nargs="*", default=[], help="e.g. MA-L MA-S")
+
+    sub.add_parser("console", help="open the full-screen dashboard")
     return parser
 
 
@@ -378,6 +380,10 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_health(args)
     if args.command == "update":
         return cmd_update(args)
+    if args.command == "console":
+        from core.tui.app import ConsoleApp   # imported here: only needed for the dashboard
+        ConsoleApp().run()
+        return 0
     return 1  # unreachable: argparse rejects unknown commands
 
 

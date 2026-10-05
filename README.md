@@ -24,6 +24,43 @@ text dashboard.
 - It isn't tied to any one model. Protocols ask for *roles* (`analyst`,
   `worker`), and `config/console.toml` decides which model fills each role.
 
+## The dashboard
+
+```bash
+aicore console
+```
+
+![AI Core Console dashboard](docs/dashboard.png)
+
+*(Screenshot from a test run with sample data and a fake model. The made-up
+"smart TV called Living Room" was caught: its evidence isn't in the data.)*
+
+| Key | Does |
+|---|---|
+| `r` / `d` | run / dry-run the selected protocol (digest: type a file path or paste text first) |
+| `h` | re-run the health checks (left pane, and dots in the status bar) |
+| `u` | Update tab: reference data ages; downloads only when you press a button |
+| `a` | Audit tab: recent runs, with a sparkline of run times |
+| `q` | quit |
+
+The boot animation and banner can be switched off in `config/console.toml` (`[ui]`).
+
+## First run on your machine (step 14)
+
+```bash
+pip install -e ".[dev]"
+pytest                          # everything should pass, no Ollama needed
+ollama serve                    # in another terminal, if it isn't running
+ollama pull llama3.1:8b         # or any chat model you like
+ollama pull llama3.2:3b         # optional small "worker" for big inputs
+aicore health                   # fix anything red (it tells you how)
+aicore update --all             # fetch the IEEE vendor registries
+aicore dry-run network_map      # see exactly what the model will get
+aicore run network_map
+aicore run digest --file tests/fixtures/digest/app.log
+aicore console
+```
+
 ## Prompt injection
 
 Collected data may contain text written to fool the model ("ignore previous
@@ -60,8 +97,8 @@ Built in steps, with a review after each one.
 | 10 | Health checks | ✅ |
 | 11 | Update section (reference data downloads) | ✅ |
 | 12 | Prompt-injection test suite | ✅ |
-| 13 | Full-screen dashboard (Textual) | ⏳ |
-| 14 | Tuning against your real Ollama | |
+| 13 | Full-screen dashboard (Textual) | ✅ |
+| 14 | Tuning against your real Ollama | ⏳ (needs you) |
 
 ## Setup
 
