@@ -1,0 +1,6 @@
+Meeting notes, 3 May
+
+The backup job failed again on Tuesday night.
+Nobody knows who changed the firewall rule.
+The backup job failed again on Tuesday night.
+Action: Sam to check the backup logs before Friday.

@@ -115,7 +115,8 @@ class Pipeline:
 
             self._step("prompt", "building prompt")
             task = manifest.files["prompt"].read_text(encoding="utf-8")
-            schema = build_answer_schema(load_schema(manifest.files["output_schema"]))
+            schema = build_answer_schema(load_schema(manifest.files["output_schema"]),
+                                         manifest.finding_kinds)
             system, user = build_messages(task, collected.text)
             state["prompt_fingerprint"] = audit.fingerprint(system + user)
             if len(collected.text) > manifest.limits["chunk_threshold_chars"]:

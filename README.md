@@ -34,8 +34,8 @@ Built in steps, with a review after each one.
 | 3 | Schema validation + evidence verification (SURE / THINK) | ✅ |
 | 4 | Model backend (Ollama, localhost only) + role resolver | ✅ |
 | 5 | Pipeline, audit log, reports, `run` / `dry-run` | ✅ |
-| 6 | Digest protocol | ⏳ |
-| 7 | Chunking (worker model → analyst model) | |
+| 6 | Digest protocol | ✅ |
+| 7 | Chunking (worker model → analyst model) | ⏳ |
 | 8 | Local reference database (SQLite) | |
 | 9 | Passive network map protocol | |
 | 10 | Health checks | |
@@ -61,6 +61,17 @@ aicore run <protocol> --file x     # run it; report saved to reports/<protocol>/
 Every run (including dry-runs, refusals and failures) adds one line to
 `logs/audit.jsonl`. The log stores fingerprints (SHA-256) of your data and
 the model's answer, never the data itself.
+
+## Protocols
+
+| Protocol | What it does |
+|---|---|
+| `digest` | Summarises a file or pasted text (CSV, JSON, JSON Lines, logs, plain text). Code computes the facts (rows, outliers, missing keys, time gaps, repeated lines, instruction-like text); the model interprets them as observations, anomalies and hypotheses. |
+
+```bash
+aicore run digest --file tests/fixtures/digest/app.log
+cat some.log | aicore run digest --file -
+```
 
 ## Adding a protocol
 

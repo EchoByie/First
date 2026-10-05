@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$comment": "What the digest adds on top of the framework's base answer (summary, findings, caveats).",
+  "type": "object",
+  "required": ["next_steps"],
+  "properties": {
+    "next_steps": {
+      "type": "array",
+      "maxItems": 5,
+      "items": {"type": "string", "minLength": 1, "maxLength": 300}
+    }
+  }
+}

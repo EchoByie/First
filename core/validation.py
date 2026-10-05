@@ -133,19 +133,30 @@ def check_answer(text: str, protocol_schema: dict | None = None) -> ValidationRe
     return validate_output(data, protocol_schema)
 
 
-def build_answer_schema(protocol_schema: dict | None = None) -> dict:
+def build_answer_schema(protocol_schema: dict | None = None,
+                        finding_kinds: list[str] | None = None) -> dict:
     """One complete schema to hand to the model (Ollama's "format").
 
     = the base contract, with findings spelled out, plus the protocol's own
     extra properties/required fields. Protocol schemas therefore only need
-    to describe what they ADD (e.g. a "devices" list).
+    to describe what they ADD (e.g. a "devices" list). They can't redefine
+    "findings"; that shape belongs to the framework.
+
+    finding_kinds (from the manifest): if given, every finding must have a
+    "kind" from this list, e.g. ["anomaly", "hypothesis"].
     """
     schema = copy.deepcopy(BASE_SCHEMA)
     finding = {k: v for k, v in copy.deepcopy(FINDING_SCHEMA).items()
                if not k.startswith("$")}
+    if finding_kinds:
+        finding["properties"]["kind"] = {"enum": list(finding_kinds)}
+        finding["required"] = finding["required"] + ["kind"]
     schema["properties"]["findings"]["items"] = finding
     if protocol_schema:
-        schema["properties"].update(copy.deepcopy(protocol_schema.get("properties", {})))
+        extra = copy.deepcopy(protocol_schema.get("properties", {}))
+        for reserved in ("summary", "findings", "caveats"):
+            extra.pop(reserved, None)
+        schema["properties"].update(extra)
         for name in protocol_schema.get("required", []):
             if name not in schema["required"]:
                 schema["required"].append(name)

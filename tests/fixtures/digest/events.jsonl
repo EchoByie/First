@@ -1,0 +1,12 @@
+{"event": "login", "user": "alice", "ok": true}
+{"event": "login", "user": "bob", "ok": true}
+{"event": "login", "user": "carol", "ok": true}
+{"event": "login", "user": "dave", "ok": true}
+{"event": "login", "user": "alice", "ok": true}
+{"event": "login", "user": "bob", "ok": false}
+{"event": "login", "user": "carol", "ok": true}
+{"event": "login", "user": "dave", "ok": true}
+{"event": "login", "ok": true}
+{"event": "login", "user": "bob", "ok": true}
+{"event": "login", "user": "carol", "ok": true}
+{"event": "login", "user": "dave", "ok": true}

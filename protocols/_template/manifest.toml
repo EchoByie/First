@@ -13,6 +13,9 @@ platforms = ["linux", "windows"]
 # whatever the model says. Use them for limits you must never forget.
 caveats = []                  # e.g. ["An ARP table is a partial view ..."]
 
+# Optional: if set, every finding must carry one of these labels ("kind").
+finding_kinds = []            # e.g. ["anomaly", "hypothesis"]
+
 # Roles, not model names. config/console.toml decides which model plays
 # each role, so protocols keep working when you switch models.
 [roles]

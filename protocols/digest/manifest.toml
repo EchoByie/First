@@ -1,0 +1,34 @@
+# Digest: summarise a file or pasted text and point out what looks odd.
+
+name = "digest"
+title = "Digest"
+description = "Summarises a file or pasted text (CSV, JSON, logs, plain text) with anomalies and hypotheses."
+version = "1.0"
+risk_level = "low"            # reads only what you hand it
+platforms = ["linux", "windows"]
+
+caveats = [
+    "This digest only covers the data you provided; it cannot see anything outside it.",
+    "Counts and statistics were computed by code. Anomalies and hypotheses are the model's interpretation and are labelled sure / not sure.",
+]
+
+# observation = a plain fact worth knowing; anomaly = something unusual;
+# hypothesis = a possible explanation (always an inference, never "sure").
+finding_kinds = ["observation", "anomaly", "hypothesis"]
+
+[roles]
+analyst = { min_context = 8192, needs_json = true }
+worker  = { min_context = 4096, optional = true }
+
+[limits]
+chunk_threshold_chars = 16000
+chunk_size_chars = 6000
+timeout_seconds = 180
+
+[input]
+kind = "file_or_text"
+
+# The digest runs no commands and reads no system files: only what you give it.
+[collector_policy]
+commands = []
+files = []

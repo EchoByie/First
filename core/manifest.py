@@ -85,6 +85,7 @@ class Manifest:
     required_refdata: list[str] = field(default_factory=list)
     max_refdata_age_days: int | None = None
     caveats: list[str] = field(default_factory=list)  # always added to reports
+    finding_kinds: list[str] = field(default_factory=list)  # if set, every finding needs one
 
     def supports(self, platform: str) -> bool:
         return platform in self.platforms
@@ -278,6 +279,12 @@ def load_manifest(folder: Path) -> Manifest:
         problems.append("'caveats' must be a list of sentences")
         caveats = []
 
+    finding_kinds = data.get("finding_kinds", [])
+    if not isinstance(finding_kinds, list) or not all(
+            isinstance(k, str) and NAME_PATTERN.match(k) for k in finding_kinds):
+        problems.append("'finding_kinds' must be a list of simple names, e.g. [\"anomaly\"]")
+        finding_kinds = []
+
     if problems:
         raise ManifestError(folder, problems)
 
@@ -298,4 +305,5 @@ def load_manifest(folder: Path) -> Manifest:
         required_refdata=refdata,
         max_refdata_age_days=max_age,
         caveats=caveats,
+        finding_kinds=finding_kinds,
     )
