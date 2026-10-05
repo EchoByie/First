@@ -18,6 +18,7 @@ model on a retry ("your last answer had these problems: ...").
 
 from __future__ import annotations
 
+import copy
 import json
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -130,3 +131,24 @@ def check_answer(text: str, protocol_schema: dict | None = None) -> ValidationRe
     if error:
         return ValidationResult(ok=False, errors=[error])
     return validate_output(data, protocol_schema)
+
+
+def build_answer_schema(protocol_schema: dict | None = None) -> dict:
+    """One complete schema to hand to the model (Ollama's "format").
+
+    = the base contract, with findings spelled out, plus the protocol's own
+    extra properties/required fields. Protocol schemas therefore only need
+    to describe what they ADD (e.g. a "devices" list).
+    """
+    schema = copy.deepcopy(BASE_SCHEMA)
+    finding = {k: v for k, v in copy.deepcopy(FINDING_SCHEMA).items()
+               if not k.startswith("$")}
+    schema["properties"]["findings"]["items"] = finding
+    if protocol_schema:
+        schema["properties"].update(copy.deepcopy(protocol_schema.get("properties", {})))
+        for name in protocol_schema.get("required", []):
+            if name not in schema["required"]:
+                schema["required"].append(name)
+        if "$defs" in protocol_schema:
+            schema["$defs"] = copy.deepcopy(protocol_schema["$defs"])
+    return schema

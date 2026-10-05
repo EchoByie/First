@@ -33,6 +33,7 @@ class RoleChoice:
     context_tokens: int           # what to ask the backend for (num_ctx)
     reason: str                   # one line explaining the choice
     warnings: list[str] = field(default_factory=list)
+    model_context: int | None = None   # the model's own maximum, if known
 
     @property
     def ok(self) -> bool:
@@ -94,7 +95,8 @@ def choose_model(spec: RoleSpec, setting: str, models: list[ModelInfo]) -> RoleC
                               f"{m.name} reads at most {m.context_length} tokens; "
                               f"this protocol needs {spec.min_context}")
         warnings = [] if m.context_length else [f"{m.name} doesn't report its context size"]
-        return RoleChoice(spec.name, m.name, context, "set in console.toml", warnings)
+        return RoleChoice(spec.name, m.name, context, "set in console.toml", warnings,
+                          model_context=m.context_length)
 
     # --- "auto" ----------------------------------------------------------------
     candidates = [m for m in models if m.can_chat
@@ -109,7 +111,8 @@ def choose_model(spec: RoleSpec, setting: str, models: list[ModelInfo]) -> RoleC
     best = candidates[0]
     reason = f"auto: {'smallest' if small_first else 'largest'} of {len(candidates)} suitable model(s)"
     warnings = [] if best.context_length else [f"{best.name} doesn't report its context size"]
-    return RoleChoice(spec.name, best.name, context, reason, warnings)
+    return RoleChoice(spec.name, best.name, context, reason, warnings,
+                      model_context=best.context_length)
 
 
 def resolve_roles(roles: dict[str, RoleSpec], role_settings: dict[str, str],

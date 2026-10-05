@@ -5,6 +5,7 @@ description = "Test protocol that does nothing."
 version = "1.0"
 risk_level = "low"
 platforms = ["linux", "windows"]
+caveats = ["manifest caveat"]
 
 [roles]
 analyst = { min_context = 8192, needs_json = true }

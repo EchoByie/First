@@ -9,6 +9,10 @@ version = "0.1"
 risk_level = "low"            # low | medium | high  (high asks for confirmation)
 platforms = ["linux", "windows"]
 
+# Sentences the CODE always adds to every report of this protocol,
+# whatever the model says. Use them for limits you must never forget.
+caveats = []                  # e.g. ["An ARP table is a partial view ..."]
+
 # Roles, not model names. config/console.toml decides which model plays
 # each role, so protocols keep working when you switch models.
 [roles]

@@ -1,7 +1,7 @@
 """Command-line entry point: `aicore <command>` or `python -m core.cli <command>`.
 
-Commands so far: version, list, models. Each build step adds more
-(run, dry-run, health, update, console).
+Commands so far: version, list, models, run, dry-run. Later steps add
+health, update and console.
 
 We use argparse because it is built into Python and gives `--help` for free.
 """
@@ -12,15 +12,20 @@ import argparse
 import sys
 from pathlib import Path
 
+import json
+
 from rich.console import Console
 from rich.markup import escape
+from rich.panel import Panel
 from rich.table import Table
 
 from core import __version__
 from core.backends import BackendError, make_backend
 from core.config import load_config, resolve_path
 from core.discovery import current_platform, discover
+from core.collecting import UserInput
 from core.models import gather_models, resolve_roles
+from core.pipeline import Pipeline, RunOptions
 
 # Rich prints coloured tables; it falls back to plain text when output is
 # piped to a file.
@@ -46,6 +51,18 @@ def build_parser() -> argparse.ArgumentParser:
     models_cmd = sub.add_parser(
         "models", help="show installed models and which one plays each protocol role")
     models_cmd.add_argument("--protocols-dir", type=Path, default=None)
+
+    for name, help_text in (("run", "run a protocol and save its report"),
+                            ("dry-run", "show exactly what would be sent to the model, without sending it")):
+        cmd = sub.add_parser(name, help=help_text)
+        cmd.add_argument("protocol", help="protocol name (see `aicore list`)")
+        source = cmd.add_mutually_exclusive_group()
+        source.add_argument("--file", type=Path, help="input file (use - to read from stdin)")
+        source.add_argument("--text", help="input text")
+        cmd.add_argument("--yes", action="store_true", help="confirm running a high-risk protocol")
+        cmd.add_argument("--protocols-dir", type=Path, default=None)
+        if name == "dry-run":
+            cmd.add_argument("--full", action="store_true", help="print the data and schema in full")
     return parser
 
 
@@ -151,6 +168,80 @@ def cmd_models(protocols_dir: Path | None, backend=None) -> int:
     return 0
 
 
+VERDICT_STYLE = {"SURE": "[bold green]✔[/bold green]", "THINK": "[yellow]?[/yellow]"}
+PREVIEW_CHARS = 3000
+
+
+def _user_input(args) -> UserInput:
+    if args.file is not None and str(args.file) == "-":
+        return UserInput(text=sys.stdin.read())
+    return UserInput(file=args.file, text=args.text)
+
+
+def _show_progress(stage: str, message: str) -> None:
+    console.print(f"  [dim]{stage:>9}[/dim]  {escape(message)}")
+
+
+def _show_report(report: dict) -> None:
+    answer = report.get("answer")
+    if answer:
+        console.print(Panel(escape(answer["summary"]), title="Summary", expand=False))
+        for f in answer["findings"]:
+            v = f["verification"]
+            subject = f" [dim]({escape(f['subject'])})[/dim]" if f.get("subject") else ""
+            console.print(f"  {VERDICT_STYLE[v['verdict']]} {escape(v['statement'])}{subject}")
+            if not v["evidence_verified"]:
+                console.print("      [red]unverified evidence: downgraded[/red]")
+        vs = answer["verification_summary"]
+        console.print(f"\n  findings: {vs['total']}   [green]sure: {vs['sure']}[/green]   "
+                      f"[yellow]not sure: {vs['think']}[/yellow]   "
+                      f"[red]unverified: {vs['unverified_evidence']}[/red]")
+    for caveat in report.get("caveats", []):
+        console.print(f"  [cyan]caveat:[/cyan] {escape(caveat)}")
+
+
+def _shorten(text: str, full: bool) -> str:
+    if full or len(text) <= PREVIEW_CHARS:
+        return text
+    return text[:PREVIEW_CHARS] + f"\n... ({len(text) - PREVIEW_CHARS:,} more characters; use --full)"
+
+
+def cmd_run(args, backend=None) -> int:
+    config = load_config()
+    found = discover(args.protocols_dir or resolve_path(config, "protocols"))
+    manifest = found.protocols.get(args.protocol)
+    if manifest is None:
+        console.print(f"[red]No protocol named {escape(args.protocol)!s}.[/red] See `aicore list`.")
+        return 1
+
+    dry_run = args.command == "dry-run"
+    console.print(f"[bold]{'DRY-RUN' if dry_run else 'RUN'}[/bold] {escape(manifest.title)}")
+    pipeline = Pipeline(config, backend=backend, progress=_show_progress)
+    result = pipeline.run(manifest, RunOptions(
+        user_input=_user_input(args), dry_run=dry_run, confirmed=args.yes))
+
+    if result.status == "dry-run":
+        p = result.preview
+        console.print(Panel(escape(p["system"]), title="system message", expand=False))
+        console.print(Panel(escape(_shorten(p["user"], args.full)), title="user message (the data)",
+                            expand=False))
+        if args.full:
+            console.print(Panel(escape(json.dumps(p["schema"], indent=2)), title="answer schema"))
+        console.print(f"  models: {escape(str(p['models']))}")
+        console.print(f"  estimated prompt tokens: {p['estimated_prompt_tokens']:,}   "
+                      f"context window requested: {p['context_tokens']:,}")
+        console.print("  [green]Nothing was sent to the model.[/green]")
+        return 0
+
+    if result.report:
+        _show_report(result.report)
+    for error in result.errors:
+        console.print(f"[red]✗ {escape(error)}[/red]")
+    if result.report_paths:
+        console.print(f"  report: {result.report_paths[0]}\n          {result.report_paths[1]}")
+    return 0 if result.status == "ok" else 1
+
+
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     if args.command == "version":
@@ -159,6 +250,8 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_list(args.protocols_dir)
     if args.command == "models":
         return cmd_models(args.protocols_dir)
+    if args.command in ("run", "dry-run"):
+        return cmd_run(args)
     return 1  # unreachable: argparse rejects unknown commands
 
 

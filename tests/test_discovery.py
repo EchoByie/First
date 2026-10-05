@@ -49,7 +49,7 @@ def test_good_manifest_loads_with_all_fields():
     assert m.allowed_commands == [["echo", "hi"]]
     assert m.allowed_files == ["/etc/hostname"]
     assert m.required_refdata == ["oui"]
-    assert set(m.files) == {"collector", "prompt", "output_schema"}  # enricher is optional
+    assert set(m.files) == {"collector", "enricher", "prompt", "output_schema"}  # no worker_prompt: optional
     assert m.supports("linux") and m.supports("windows")
 
 

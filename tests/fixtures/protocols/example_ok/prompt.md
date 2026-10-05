@@ -1,2 +1,1 @@
-Analyse this data:
-{data}
+List the facts in the data.

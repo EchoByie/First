@@ -1,1 +1,6 @@
-{"type": "object"}
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": ["topic"],
+  "properties": {"topic": {"type": "string", "maxLength": 100}}
+}

@@ -84,6 +84,7 @@ class Manifest:
     allowed_files: list[str] = field(default_factory=list)
     required_refdata: list[str] = field(default_factory=list)
     max_refdata_age_days: int | None = None
+    caveats: list[str] = field(default_factory=list)  # always added to reports
 
     def supports(self, platform: str) -> bool:
         return platform in self.platforms
@@ -272,6 +273,11 @@ def load_manifest(folder: Path) -> Manifest:
         problems.append("[requires] max_refdata_age_days must be a positive whole number")
         max_age = None
 
+    caveats = data.get("caveats", [])
+    if not isinstance(caveats, list) or not all(isinstance(c, str) and c for c in caveats):
+        problems.append("'caveats' must be a list of sentences")
+        caveats = []
+
     if problems:
         raise ManifestError(folder, problems)
 
@@ -291,4 +297,5 @@ def load_manifest(folder: Path) -> Manifest:
         allowed_files=allowed_files,
         required_refdata=refdata,
         max_refdata_age_days=max_age,
+        caveats=caveats,
     )
