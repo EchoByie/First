@@ -30,8 +30,8 @@ Built in steps, with a review after each one.
 | Step | What | State |
 |---|---|---|
 | 1 | Project skeleton, config, test setup | ✅ |
-| 2 | Protocol manifests + discovery + `aicore list` | ⏳ |
-| 3 | Schema validation + evidence verification (SURE / THINK) | |
+| 2 | Protocol manifests + discovery + `aicore list` | ✅ |
+| 3 | Schema validation + evidence verification (SURE / THINK) | ⏳ |
 | 4 | Model backend (Ollama, localhost only) + role resolver | |
 | 5 | Pipeline, audit log, reports, `run` / `dry-run` | |
 | 6 | Digest protocol | |
@@ -52,7 +52,14 @@ source .venv/bin/activate          # Windows: .venv\Scripts\activate
 pip install -e ".[dev]"
 pytest                             # runs all tests; no Ollama needed
 aicore version
+aicore list                        # protocols found in protocols/
 ```
+
+## Adding a protocol
+
+Copy `protocols/_template/`, rename the folder, and edit `manifest.toml`
+(every option is explained in comments). It is picked up automatically.
+If something is wrong, `aicore list` tells you exactly what.
 
 ## Layout
 

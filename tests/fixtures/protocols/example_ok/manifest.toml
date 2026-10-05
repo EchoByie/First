@@ -1,0 +1,25 @@
+# A tiny valid protocol used only by tests.
+name = "example_ok"
+title = "Example"
+description = "Test protocol that does nothing."
+version = "1.0"
+risk_level = "low"
+platforms = ["linux", "windows"]
+
+[roles]
+analyst = { min_context = 8192, needs_json = true }
+worker  = { min_context = 4096, optional = true }
+
+[limits]
+chunk_threshold_chars = 10000
+
+[input]
+kind = "file_or_text"
+
+[collector_policy]
+commands = [["echo", "hi"]]
+files = ["/etc/hostname"]
+
+[requires]
+refdata = ["oui"]
+max_refdata_age_days = 90

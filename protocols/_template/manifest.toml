@@ -1,0 +1,44 @@
+# Manifest template. Copy this folder, rename it (e.g. protocols/my_protocol),
+# and edit. Folders starting with "_" are ignored by discovery, so this
+# template never shows up in `aicore list`.
+
+name = "my_protocol"          # must match the folder name; lowercase, digits, _
+title = "My protocol"         # shown in the dashboard (defaults to name)
+description = "One sentence: what this protocol looks at and what it tells you."
+version = "0.1"
+risk_level = "low"            # low | medium | high  (high asks for confirmation)
+platforms = ["linux", "windows"]
+
+# Roles, not model names. config/console.toml decides which model plays
+# each role, so protocols keep working when you switch models.
+[roles]
+analyst = { min_context = 8192, needs_json = true }
+worker  = { min_context = 4096, optional = true }   # only used for big inputs
+
+# Optional; these are the defaults.
+[limits]
+chunk_threshold_chars = 12000   # input bigger than this is split into chunks
+chunk_size_chars = 6000
+timeout_seconds = 120
+
+[input]
+kind = "none"                   # none | file_or_text
+
+# The ONLY things the collector is allowed to touch. Commands are lists of
+# words (never one string) so they can't be run through a shell.
+[collector_policy]
+commands = []                   # e.g. [["arp", "-a"]]
+files = []                      # e.g. ["/proc/net/arp"]
+
+# Optional: reference data this protocol needs (checked by `aicore health`).
+[requires]
+refdata = []                    # e.g. ["oui"]
+# max_refdata_age_days = 90
+
+# Optional: override file names inside this folder. Defaults shown.
+# [files]
+# collector = "collector.py"        (required)
+# enricher = "enricher.py"          (optional)
+# prompt = "prompt.md"              (required)
+# worker_prompt = "worker_prompt.md" (optional)
+# output_schema = "output.schema.json" (required)
