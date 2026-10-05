@@ -37,8 +37,8 @@ Built in steps, with a review after each one.
 | 6 | Digest protocol | ✅ |
 | 7 | Chunking (worker model → analyst model) | ✅ |
 | 8 | Local reference database (SQLite) | ✅ |
-| 9 | Passive network map protocol | ⏳ |
-| 10 | Health checks | |
+| 9 | Passive network map protocol | ✅ |
+| 10 | Health checks | ⏳ |
 | 11 | Update section (reference data downloads) | |
 | 12 | Prompt-injection test suite | |
 | 13 | Full-screen dashboard (Textual) | |
@@ -66,9 +66,11 @@ the model's answer, never the data itself.
 
 | Protocol | What it does |
 |---|---|
+| `network_map` | Passive network map. Reads the ARP table and default gateway (Linux: `/proc/net/arp`, `/proc/net/route`; Windows: `arp -a`, `route print -4`). Never pings, scans or contacts anything. Drops broadcast/multicast/incomplete entries, adds MAC vendors from the local IEEE database, flags randomized MACs, the gateway, and one-MAC-many-IPs / one-IP-many-MACs patterns; the model guesses each device's type. Every report states that an ARP table is a partial view. |
 | `digest` | Summarises a file or pasted text (CSV, JSON, JSON Lines, logs, plain text). Code computes the facts (rows, outliers, missing keys, time gaps, repeated lines, instruction-like text); the model interprets them as observations, anomalies and hypotheses. |
 
 ```bash
+aicore run network_map
 aicore run digest --file tests/fixtures/digest/app.log
 cat some.log | aicore run digest --file -
 ```

@@ -1,0 +1,5 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$comment": "The network map needs nothing beyond the base answer: device guesses are findings with kind device_guess and subject = IP.",
+  "type": "object"
+}

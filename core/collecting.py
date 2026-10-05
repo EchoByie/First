@@ -13,6 +13,7 @@ It can:
     ctx.user_input_text()   the file or text the user handed in
     ctx.read_file(path)     a file from the manifest's allow-list
     ctx.run([...])          a command from the manifest's allow-list
+    ctx.open_refdata()      the local reference database, READ-ONLY
     ctx.platform            "linux" or "windows"
 
 What the model sees is CollectedData.full_text():
@@ -33,6 +34,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from core.manifest import Manifest
+from core.refdata.db import RefDataError, RefDB
 from core.safe_exec import run_allowed
 
 MAX_READ_BYTES = 5_000_000   # 5 MB cap on any single file a collector reads
@@ -101,6 +103,7 @@ class CollectorContext:
     manifest: Manifest
     platform: str
     user_input: UserInput = field(default_factory=UserInput)
+    reference_db: Path | None = None
 
     def user_input_text(self) -> str:
         """The file or text the user chose. The user picked it explicitly,
@@ -123,6 +126,16 @@ class CollectorContext:
             return _read_capped(Path(path))
         except OSError as e:
             raise CollectorError(f"can't read {path}: {e.strerror}") from None
+
+    def open_refdata(self) -> RefDB | None:
+        """Open the reference database read-only, or return None if it
+        hasn't been imported yet (the protocol should cope and say so)."""
+        if self.reference_db is None:
+            return None
+        try:
+            return RefDB(self.reference_db)
+        except RefDataError:
+            return None
 
     def run(self, argv: list[str], timeout: float | None = None) -> str:
         timeout = timeout or min(30, self.manifest.limits["timeout_seconds"])

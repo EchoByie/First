@@ -285,7 +285,8 @@ class Pipeline:
             raise _Stop("refused", f"{manifest.name} needs a file or text as input")
 
     def _collect(self, manifest: Manifest, options: RunOptions) -> CollectedData:
-        ctx = CollectorContext(manifest, current_platform(), options.user_input)
+        ctx = CollectorContext(manifest, current_platform(), options.user_input,
+                               reference_db=resolve_path(self.config, "reference_db"))
         try:
             self._step("collect", "collecting data")
             collect = load_function(manifest.files["collector"], "collect")

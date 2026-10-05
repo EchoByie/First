@@ -1,0 +1,44 @@
+# Passive network map: who has this computer recently talked to on the LAN?
+#
+# PASSIVE means: we only READ tables the operating system already keeps.
+# Nothing is pinged, scanned or contacted. The device list is therefore
+# partial by nature; the caveats below are added to every report by code.
+
+name = "network_map"
+title = "Passive network map"
+description = "Reads the ARP table (no pinging or scanning), adds MAC vendors, flags the gateway and randomized MACs, and guesses each device's type."
+version = "1.0"
+risk_level = "low"            # read-only: two OS tables, nothing sent on the network
+platforms = ["linux", "windows"]
+
+caveats = [
+    "An ARP table is a partial view: it only lists devices this computer has exchanged traffic with recently. Devices that are switched off, idle, on another network segment, or talking only over IPv6 will not appear.",
+    "No device was pinged, scanned or contacted. Everything comes from this computer's own tables.",
+    "Device types are guesses based on MAC vendors and network roles. Randomized (private) MAC addresses hide the vendor, so those devices are hard to identify.",
+]
+
+# device_guess = what one device probably is (subject = its IP address)
+# observation  = a plain fact about the network
+# concern      = something worth a closer look (e.g. one MAC on many IPs)
+finding_kinds = ["device_guess", "observation", "concern"]
+
+[roles]
+analyst = { min_context = 8192, needs_json = true }
+worker  = { min_context = 4096, optional = true }
+
+[limits]
+chunk_threshold_chars = 16000
+chunk_size_chars = 8000
+timeout_seconds = 180
+
+[input]
+kind = "none"
+
+# Exactly these, nothing else. Linux needs no commands at all.
+[collector_policy]
+commands = [["arp", "-a"], ["route", "print", "-4"]]        # Windows
+files = ["/proc/net/arp", "/proc/net/route"]                 # Linux
+
+[requires]
+refdata = ["oui"]
+max_refdata_age_days = 90
