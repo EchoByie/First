@@ -1,0 +1,11 @@
+# Python leftovers
+__pycache__/
+*.pyc
+*.egg-info/
+.venv/
+.pytest_cache/
+
+# Things the framework creates while running (not source code)
+reports/
+logs/
+data/*.db

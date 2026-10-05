@@ -1,0 +1,29 @@
+# console.toml - settings for the AI Core Console.
+# You can edit this file. Anything you delete falls back to the defaults
+# built into core/config.py.
+
+[backend]
+# Where the model server lives. The framework REFUSES any address that is
+# not this machine (localhost / 127.0.0.1 / ::1), even if you change it here.
+kind = "ollama"
+url = "http://localhost:11434"
+
+[roles]
+# Protocols never name a model. They ask for a "role", and this table says
+# which model plays that role.
+#   "auto" = pick the best installed model that meets the protocol's needs.
+#   Or write a model name, e.g. analyst = "llama3.1:8b"
+analyst = "auto"   # does the final analysis
+worker = "auto"    # summarises chunks when the input is large
+
+[paths]
+# Relative paths are relative to the project folder.
+protocols = "protocols"
+reports = "reports"
+audit_log = "logs/audit.jsonl"
+reference_db = "data/reference.db"
+
+[ui]
+# Purely cosmetic touches in the dashboard. Set to false for a plain look.
+boot_animation = true
+banner = true
